@@ -1,7 +1,7 @@
 import argparse
 import threading
 from io import StringIO
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr   
 
 from hailo_platform import VDevice
 from hailo_platform.genai import LLM
