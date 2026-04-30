@@ -17,7 +17,7 @@ from hailo_apps.python.core.common.defines import (
     VLM_CHAT_APP,
 )
 from hailo_apps.python.core.common.hailo_logger import get_logger
-from hailo_apps.python.core.common.toolbox import open_usb_camera
+from hailo_apps.python.core.common.toolbox import open_rpi_camera, open_usb_camera
 
 logger = get_logger(__name__)
 
@@ -70,10 +70,23 @@ def clean_response(raw: str) -> str:
     return raw.split(". [{'type'")[0].split("<|im_end|>")[0].strip()
 
 
+def open_camera(source: str):
+    if source == "rpi":
+        cap = open_rpi_camera()
+        if cap is None:
+            logger.error("Failed to open RPi (CSI) camera.")
+            sys.exit(1)
+        return cap
+    return open_usb_camera("sd")
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Live USB camera + Hailo VLM scene commentator")
+    parser = argparse.ArgumentParser(description="Live camera + Hailo VLM scene commentator")
     parser.add_argument("--hef-path", type=str, default=None, help="Path to VLM HEF file")
     parser.add_argument("--list-models", action="store_true", help="List available models")
+    parser.add_argument("--source", choices=["usb", "rpi"], default="usb",
+                        help="Camera source: 'usb' for a USB webcam, 'rpi' for the "
+                             "Raspberry Pi CSI camera via Picamera2 (default: usb)")
     parser.add_argument("--interval", type=float, default=10.0,
                         help="Seconds between snapshots sent to the VLM (default: 10)")
     parser.add_argument("--no-preview", action="store_true",
@@ -105,9 +118,10 @@ def main():
         vlm = VLM(vdevice, str(hef_path))
         print("✓ Model loaded")
 
-        print("[3/3] Opening USB camera...")
-        cap = open_usb_camera("sd")
-        print("✓ Camera open")
+        cam_label = "RPi CSI camera" if args.source == "rpi" else "USB camera"
+        print(f"[3/3] Opening {cam_label}...")
+        cap = open_camera(args.source)
+        print(f"✓ {cam_label} open")
 
         show_preview = not args.no_preview
         if show_preview:
